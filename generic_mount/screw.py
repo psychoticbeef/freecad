@@ -4,27 +4,6 @@ import Part
 from enum import Enum, auto
 from dataclasses import dataclass
 
-def center(small, large):
-    # center appletv inside mount
-    bb_small = small.BoundBox
-    bb_large = large.BoundBox
-    center_small = App.Vector(
-        (bb_small.XMin + bb_small.XMax) / 2.0,
-        (bb_small.YMin + bb_small.YMax) / 2.0,
-        (bb_small.ZMin + bb_small.ZMax) / 2.0
-    )
-    center_large = App.Vector(
-        (bb_large.XMin + bb_large.XMax) / 2.0,
-        (bb_large.YMin + bb_large.YMax) / 2.0,
-        (bb_large.ZMin + bb_large.ZMax) / 2.0
-    )
-    translation_vector = center_large - center_small
-    print("Translation vector to center object:", translation_vector)
-    
-    result = small.copy()
-    result.translate(translation_vector)
-    return result
-
 class ScrewType(Enum):
     M4 = auto()
     M6 = auto()
@@ -53,19 +32,11 @@ def render(screwType = ScrewType.M6, screwLength = 12, tolerance = 0.5):
     # Create or use an existing document
     doc = App.ActiveDocument
     if not doc:
-        doc = App.newDocument("CountersunkM6Screw")
+        doc = App.newDocument("CountersunkMScrew")
     
-    # ----------------------------------------------------
-    # 1) Define Dimensions (in mm)
-    # ----------------------------------------------------
     screwDimensions = getScrewDimensions(screwType=screwType, length=screwLength)
-    
-    # ----------------------------------------------------
-    # 2) Define a Closed 2D Profile in the XZ Plane
-    #    (X = radial direction, Z = vertical direction)
-    #    For a proper revolution, the profile must be closed.
-    # ----------------------------------------------------
 
+    # see: https://www.schraubenking-shop.de/M6-x-12mm-Senkschrauben-ISO10642-Stahl-verzinkt-FKL-88-P000687
     A = App.Vector(0, 0, 0) # kopfmitte
     B = App.Vector(screwDimensions.dk/2, 0, 0) # kopf aussen
     C = App.Vector(screwDimensions.dk/2, 0, tolerance) # gerade runter zur toleranz
@@ -83,26 +54,12 @@ def render(screwType = ScrewType.M6, screwLength = 12, tolerance = 0.5):
     
     # Combine edges into a wire (the profile must be closed)
     profile_wire = Part.Wire([edge_AB, edge_BC, edge_CD, edge_DE, edge_EF, edge_FA])
-    
-    # Create a face from the wire
-    try:
-        profile_face = Part.Face(profile_wire)
-    except Exception as e:
-        App.Console.PrintError("Failed to create face from wire: " + str(e) + "\n")
-        return
-    
-    # ----------------------------------------------------
-    # 3) Create the 3D Screw by Revolving the Profile
-    # ----------------------------------------------------
+    profile_face = Part.Face(profile_wire)
     # We revolve the profile face around the Z-axis.
-    # Using the 'revolve' method (available in many FreeCAD versions):
     axis_point = App.Vector(0,0,0)
     axis_dir   = App.Vector(0,0,1)
-    angle = 360  # degrees
-    
-    # This will create a solid by revolving the closed profile.
-    screw_solid = profile_face.revolve(axis_point, axis_dir, angle)
-    screw_solid.rotate(App.Vector(0,0,0), App.Vector(1,0,0), 180)
+    screw_solid = profile_face.revolve(axis_point, axis_dir, 360)
+    screw_solid.rotate(App.Vector(0,0,0), App.Vector(1,0,0), 180) # it's upside-down in coordinate space, rotate around x
     return screw_solid
 
     

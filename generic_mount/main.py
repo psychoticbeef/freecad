@@ -3,9 +3,14 @@ import FreeCADGui as Gui
 import Part
 sys.path.append("/Users/da/code/freecad/generic_mount/")
 import screw
+from enum import Enum, auto
+
+class MountType(Enum):
+    VESA = auto()
+    Wall = auto()
+    NoMount = auto()
 
 def center(small, large):
-    # center appletv inside mount
     bb_small = small.BoundBox
     bb_large = large.BoundBox
     center_small = App.Vector(
@@ -25,10 +30,44 @@ def center(small, large):
     result.translate(translation_vector)
     return result
 
-def render(tolerance = 0.5, x = 100, y = 100, z = 25, thickness = 4.22, lip = 2):
+def getTopEdges(shape, chamfer_distance = 1):
+    top_face = max(shape.Faces, key=lambda f: f.CenterOfMass.z)
+    return list(top_face.Edges)
+    #top_face_edges = list(top_face.Edges)
+    #return shape.makeChamfer(chamfer_distance, top_face_edges)
+
+def getOuterEdges(shape, chamfer_distance = 1):
+    tol = 1e-6
+    # Find the vertical edges (those that go straight up the Z-axis)
+    vertical_edges = []
+    for edge in shape.Edges:
+        # Get the start and end vertices of the edge.
+        v0 = edge.Vertexes[0].Point
+        v1 = edge.Vertexes[1].Point
+        # Calculate differences in coordinates.
+        dx = abs(v1.x - v0.x)
+        dy = abs(v1.y - v0.y)
+        dz = abs(v1.z - v0.z)
+        # If the x and y differences are nearly zero and z is different,
+        # then this edge is vertical.
+        if dx < tol and dy < tol and dz > tol:
+            vertical_edges.append(edge)
+    return vertical_edges
+    #chamfer_distance = 1
+    #return shape.makeChamfer(chamfer_distance, vertical_edges)
+
+def render(tolerance = 0.5, x = 76.5, y = 89.5, z = 49, thickness = 4.22, lip = 2):
     doc = App.ActiveDocument
     if not doc:
-        doc = App.newDocument("AppleTV_VESA_Mount")
+        doc = App.newDocument("Generic_VESA_Mount")
+
+    # TODO: bottom thickness = max(thickness, screw head depth)
+    #       bad idea. even though not pretty, add and fuse extended bottom afterwards. everything else gets complicated.
+    # TODO: screwType as parameter
+    # TODO: MountType as parameter - VESA single screw center, Wall dual screw with alignment guides
+    # TODO: input either wire + height or cuboid
+    # TODO: is offset usable if we want to insert the object flush? maybe cut away the front by 1*thickness?
+    #       or, maybe there is a way to scale it down in one dimension [preferred]
 
     object_x = x + tolerance
     object_y = y + tolerance
@@ -39,12 +78,16 @@ def render(tolerance = 0.5, x = 100, y = 100, z = 25, thickness = 4.22, lip = 2)
     case_z = object_z + 2*thickness
 
     lip_x = object_x - 2*lip
-    lip_y = object_y - 2*lip
+    lip_y = object_y - 2*lip - thickness
     lip_z = object_z - 2*lip
 
-    # make boxes and screw, and center them
+    # make boxes and screw, chamfer the outsides of the case, and center them
     object = Part.makeBox(object_x, object_y, object_z)
     case = Part.makeBox(case_x, case_y, case_z)
+    edges = getTopEdges(case)
+    edges.extend(getOuterEdges(case))
+    case = case.makeFillet(2, edges)
+
     lipb = Part.makeBox(lip_x, lip_y, lip_z)
     object = center(object, case)
     object.translate(App.Vector(0, object.BoundBox.YMax - case.BoundBox.YMax, object.BoundBox.ZMin - case.BoundBox.ZMin - thickness)) # translate for flush cut
@@ -66,15 +109,14 @@ def render(tolerance = 0.5, x = 100, y = 100, z = 25, thickness = 4.22, lip = 2)
     screw_doc = doc.addObject("Part::Feature", "Screw")
     screw_doc.Shape = screwm
     screw_doc.ViewObject.Visibility = False
-
     doc.recompute()
 
-    # needs to be adjusted by BBoxes
+    # align cutter on the outer / inner-most faces
     positions = [
-        App.Vector(0, 0, 10),
-        App.Vector(10, 0, 0),
-        App.Vector(-10, 0, 0),
-        App.Vector(0, 10, 0),
+        App.Vector(0, 0, case.BoundBox.ZMax - lipb.BoundBox.ZMax),
+        App.Vector(case.BoundBox.XMax - lipb.BoundBox.XMax, 0, 0),
+        App.Vector(case.BoundBox.XMin - lipb.BoundBox.XMin, 0, 0),
+        App.Vector(0, case.BoundBox.YMax - lipb.BoundBox.YMax, 0),
     ]
     cutters = []
     for pos in positions:
@@ -96,7 +138,7 @@ def render(tolerance = 0.5, x = 100, y = 100, z = 25, thickness = 4.22, lip = 2)
     result_doc.ViewObject.Visibility = False
     result_doc.Shape = result_shape
 
-    refine_doc = doc.addObject("Part::Refine", "Refine_Shape")
+    refine_doc = doc.addObject("Part::Refine", "Refined_Result")
     refine_doc.Source = result_doc
     doc.recompute()
 
