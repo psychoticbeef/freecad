@@ -15,20 +15,21 @@ class ScrewDimensions:
     k: float
     d: float
     l: int
+    k_tolerance: float
 
-def getScrewDimensions(screwType = ScrewType.M6, length = 12):
+def getScrewDimensions(screwType=ScrewType.M6, length=12, head_tolerance=2):
     match screwType:
         case ScrewType.M4:
             k = 2.48
-            return ScrewDimensions(dk=7.62, k=k, d=4, l=length-k)
+            return ScrewDimensions(dk=7.62, k=k, d=4, l=length-k, k_tolerance=k+head_tolerance)
         case ScrewType.M6:
             k = 3.72
-            return ScrewDimensions(dk=12.16, k=k, d=6, l=length-k)
+            return ScrewDimensions(dk=12.16, k=k, d=6, l=length-k, k_tolerance=k+head_tolerance)
         case ScrewType.M8:
             k = 4.96
-            return ScrewDimensions(dk=16.43, k=k, d=8, l=length-k)
+            return ScrewDimensions(dk=16.43, k=k, d=8, l=length-k, k_tolerance=k+head_tolerance)
 
-def render(screwType = ScrewType.M6, screwLength = 12, tolerance = 0.5):
+def render(screwType = ScrewType.M6, screwLength = 12, tolerance = 0.5, head_tolerance=2):
     # Create or use an existing document
     doc = App.ActiveDocument
     if not doc:
@@ -38,11 +39,11 @@ def render(screwType = ScrewType.M6, screwLength = 12, tolerance = 0.5):
 
     # see: https://www.schraubenking-shop.de/M6-x-12mm-Senkschrauben-ISO10642-Stahl-verzinkt-FKL-88-P000687
     A = App.Vector(0, 0, 0) # kopfmitte
-    B = App.Vector(screwDimensions.dk/2, 0, 0) # kopf aussen
-    C = App.Vector(screwDimensions.dk/2, 0, tolerance) # gerade runter zur toleranz
-    D = App.Vector(screwDimensions.d/2, 0, screwDimensions.k/2 + tolerance) # kopf innen, stueckerl direkt unterm kopf
-    E = App.Vector(screwDimensions.d/2, 0, screwDimensions.k/2 + tolerance + screwDimensions.l ) # nach unten
-    F = App.Vector(0, 0, screwDimensions.k/2 + tolerance + screwDimensions.l) # unten mitte
+    B = App.Vector(screwDimensions.dk/2 + tolerance, 0, 0) # kopf aussen
+    C = App.Vector(screwDimensions.dk/2 + tolerance, 0, head_tolerance) # gerade runter zur kopf toleranz [kopf ragt gerade heraus]
+    D = App.Vector(screwDimensions.d/2 + tolerance, 0, screwDimensions.k/2 + head_tolerance) # kopf innen, stueckerl direkt unterm kopf
+    E = App.Vector(screwDimensions.d/2 + tolerance, 0, screwDimensions.k/2 + head_tolerance + screwDimensions.l ) # nach unten
+    F = App.Vector(0, 0, screwDimensions.k/2 + head_tolerance + screwDimensions.l) # unten mitte
     
     # Create edges between the points
     edge_AB = Part.makeLine(A, B)

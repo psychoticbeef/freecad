@@ -30,13 +30,11 @@ def center(small, large):
     result.translate(translation_vector)
     return result
 
-def getTopEdges(shape, chamfer_distance = 1):
+def getTopEdges(shape, chamfer_distance=1):
     top_face = max(shape.Faces, key=lambda f: f.CenterOfMass.z)
     return list(top_face.Edges)
-    #top_face_edges = list(top_face.Edges)
-    #return shape.makeChamfer(chamfer_distance, top_face_edges)
 
-def getOuterEdges(shape, chamfer_distance = 1):
+def getOuterEdges(shape, chamfer_distance=1):
     tol = 1e-6
     # Find the vertical edges (those that go straight up the Z-axis)
     vertical_edges = []
@@ -53,16 +51,12 @@ def getOuterEdges(shape, chamfer_distance = 1):
         if dx < tol and dy < tol and dz > tol:
             vertical_edges.append(edge)
     return vertical_edges
-    #chamfer_distance = 1
-    #return shape.makeChamfer(chamfer_distance, vertical_edges)
 
-def render(tolerance = 0.5, x = 76.5, y = 89.5, z = 49, thickness = 4.22, lip = 2):
+def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fillet = 2):
     doc = App.ActiveDocument
     if not doc:
         doc = App.newDocument("Generic_VESA_Mount")
 
-    # TODO: bottom thickness = max(thickness, screw head depth)
-    #       bad idea. even though not pretty, add and fuse extended bottom afterwards. everything else gets complicated.
     # TODO: screwType as parameter
     # TODO: MountType as parameter - VESA single screw center, Wall dual screw with alignment guides
     # TODO: input either wire + height or cuboid
@@ -72,29 +66,25 @@ def render(tolerance = 0.5, x = 76.5, y = 89.5, z = 49, thickness = 4.22, lip = 
     object_x = x + tolerance
     object_y = y + tolerance
     object_z = z + tolerance
-
     case_x = object_x + 2*thickness
     case_y = object_y + 1*thickness # object can be inserted flush
     case_z = object_z + 2*thickness
-
     lip_x = object_x - 2*lip
     lip_y = object_y - 2*lip - thickness
     lip_z = object_z - 2*lip
 
-    # make boxes and screw, chamfer the outsides of the case, and center them
+    # make boxes and screw, and center everything inside the case
     object = Part.makeBox(object_x, object_y, object_z)
     case = Part.makeBox(case_x, case_y, case_z)
-    edges = getTopEdges(case)
-    edges.extend(getOuterEdges(case))
-    case = case.makeFillet(2, edges)
-
     lipb = Part.makeBox(lip_x, lip_y, lip_z)
     object = center(object, case)
-    object.translate(App.Vector(0, object.BoundBox.YMax - case.BoundBox.YMax, object.BoundBox.ZMin - case.BoundBox.ZMin - thickness)) # translate for flush cut
+     # translate for flush cut
+    object.translate(App.Vector(0, object.BoundBox.YMax - case.BoundBox.YMax, object.BoundBox.ZMin - case.BoundBox.ZMin - thickness))
     lipb = center(lipb, case)
-    screwm = screw.render(screw.ScrewType.M6, 12)
+    screwm = screw.render(screwType=screw.ScrewType.M6, screwLength=12, tolerance=0.5)
     screwm = center(screwm, case)
-    screwm.translate(App.Vector(0, 0, case.BoundBox.ZMin + thickness - screwm.BoundBox.ZMax)) # top of screw to top of bottom of case
+    # top of screw to top of bottom of case
+    screwm.translate(App.Vector(0, 0, case.BoundBox.ZMin + thickness - screwm.BoundBox.ZMax))
 
     # put into objects for posterity
     object_doc = doc.addObject("Part::Feature", "Object")
@@ -132,12 +122,26 @@ def render(tolerance = 0.5, x = 76.5, y = 89.5, z = 49, thickness = 4.22, lip = 
     cutter_doc.ViewObject.Visibility = False
     cutter_doc.Shape = compound_cutter
     doc.recompute()
-
-    result_shape = case_doc.Shape.cut(compound_cutter)
+    # check if case needs a bigger bottom to fit the screw and have enough space left such that the bottom does not
+    # get too thin at the thinnest point
+    screwDims = screw.getScrewDimensions(screwType=screw.ScrewType.M6, length=12, head_tolerance=2)
+    if screwDims.k > thickness:
+        big_buttocks = Part.makeBox(case_x, case_y, screwDims.k - thickness)
+        offset = case.BoundBox.ZMin - big_buttocks.BoundBox.ZMax
+        big_buttocks.translate(App.Vector(0, 0, offset))
+        case = case.fuse(big_buttocks)
+        pass
+    # fillet the outsides of the case
+    edges = getTopEdges(case)
+    edges.extend(getOuterEdges(case))
+    case = case.makeFillet(fillet, edges)
+    # cut everything from case
+    result_shape = case.cut(compound_cutter)
+    # result needs to be a feature for ...
     result_doc = doc.addObject("Part::Feature", "Result")
     result_doc.ViewObject.Visibility = False
     result_doc.Shape = result_shape
-
+    # ... refinement
     refine_doc = doc.addObject("Part::Refine", "Refined_Result")
     refine_doc.Source = result_doc
     doc.recompute()
@@ -146,4 +150,4 @@ def render(tolerance = 0.5, x = 76.5, y = 89.5, z = 49, thickness = 4.22, lip = 
     Gui.SendMsgToActiveView("ViewFit")
 
 if __name__ == "__main__":
-    render(0.5)
+    render(tolerance=0.5, x=76.5, y=89.5, z=49, thickness=4, lip=2, fillet=2)
