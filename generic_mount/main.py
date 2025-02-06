@@ -58,10 +58,12 @@ def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fi
         doc = App.newDocument("Generic_VESA_Mount")
 
     # TODO: screwType as parameter
+    # TODO: grooves, e.g. to slide in object with feet
     # TODO: MountType as parameter - VESA single screw center, Wall dual screw with alignment guides
     # TODO: input either wire + height or cuboid
     # TODO: is offset usable if we want to insert the object flush? maybe cut away the front by 1*thickness?
     #       or, maybe there is a way to scale it down in one dimension [preferred]
+    # TODO: check out varsets, maybe move some stuff there
 
     object_x = x + tolerance
     object_y = y + tolerance
@@ -81,7 +83,7 @@ def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fi
      # translate for flush cut
     object.translate(App.Vector(0, object.BoundBox.YMax - case.BoundBox.YMax, object.BoundBox.ZMin - case.BoundBox.ZMin - thickness))
     lipb = center(lipb, case)
-    screwm = screw.render(screwType=screw.ScrewType.M6, screwLength=12, tolerance=0.5)
+    screwm = screw.render(screwType=screw.ScrewType.M6, screwLength=12, tolerance=0.25)
     screwm = center(screwm, case)
     # top of screw to top of bottom of case
     screwm.translate(App.Vector(0, 0, case.BoundBox.ZMin + thickness - screwm.BoundBox.ZMax))
@@ -150,4 +152,4 @@ def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fi
     Gui.SendMsgToActiveView("ViewFit")
 
 if __name__ == "__main__":
-    render(tolerance=0.5, x=76.5, y=89.5, z=49, thickness=4, lip=2, fillet=2)
+    render(tolerance=1, x=212.9, y=99.4, z=33.5, thickness=4, lip=2, fillet=2)
