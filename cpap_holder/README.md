@@ -4,6 +4,6 @@ Angled inwards for some (low) amount of clamping force. Increase thickness for m
 
 Print in PETG, as PLA will over time lose its clamping force.
 
-![](img/with_mask_holder.png)
-![](img/without_mask_holder.png)
+![](img/cpap_holder_with_mask_holder.png)
+![](img/cpap_holder.png)
 ![](img/larp.jpeg)
