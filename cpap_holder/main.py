@@ -6,15 +6,15 @@ includeMaskHolder = True
 margin = 3.0
 height = 40.0
 width = 41.5
-arc = 189
+arc = 207
 innerDiameter = 22.0
 arcRadius = innerDiameter / 2.0
-topExtension = (arcRadius + margin/2) * (1 - math.cos(math.radians(arc)/2))
+topExtension = (arcRadius + margin) * (1 - math.cos(math.radians(arc)/2))
 clampedWidth = 38.0
 sideOffset = (width - clampedWidth) / 2.0
 extrusionDepth = 30.0
 
-arcAngleOffset = (arc / 360 * 2 * math.pi) - math.pi
+arcAngleOffset = math.radians(arc) - math.pi
 
 # Define vertices for the base profile
 basePoints = [
