@@ -1,12 +1,10 @@
 import FreeCAD, FreeCADGui, Part, math, os
 
-def save_screenshot(document_name, width=1600, height=900):
-    # Ensure FreeCAD GUI is active
+def save_screenshot(document_name, width=1024, height=1024):
     if not FreeCAD.GuiUp:
         print("Error: FreeCAD GUI is not available.")
         return
 
-    # Ensure an active document exists
     doc = FreeCADGui.getDocument(document_name)
     if not doc:
         print(f"Error: Document {document_name} not found.")
@@ -14,16 +12,14 @@ def save_screenshot(document_name, width=1600, height=900):
 
     view = doc.activeView()
 
-    # Set camera view
     FreeCADGui.updateGui()
-    view.fitAll()  # Ensure the object fits in the view
-    view.viewTrimetric()
+    view.setCameraOrientation(FreeCAD.Rotation(0, -45, -35).Q)
+    view.fitAll()
+    FreeCADGui.updateGui()
 
-    # Get script directory and save path
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    screenshot_path = os.path.join(script_dir, f"{document_name}.png")
+    screenshot_path = os.path.join(script_dir, "img", f"{document_name}.png")
 
-    # Save the screenshot
     view.saveImage(screenshot_path, width, height, "PNG")
     print(f"Screenshot saved to: {screenshot_path}")
 
@@ -39,18 +35,15 @@ def create_cpap_holder(
     extrusionDepth,
     fillet_radius=0.9
 ):
-    # Create a new document
     document = FreeCAD.newDocument(document_name)
 
-    # Compute values
     arcRadius = innerDiameter / 2.0
     topExtension = (arcRadius + margin) * (1 - math.cos(math.radians(arc) / 2))
     sideOffset = (width - clampedWidth) / 2.0
     arcAngleOffset = math.radians(arc) - math.pi
 
-    # Define vertices for the base profile
     basePoints = [
-        FreeCAD.Vector(sideOffset, 0, 0),                        # pt_innerBottomLeft
+        FreeCAD.Vector(sideOffset, 0, 0),                         # pt_innerBottomLeft
         FreeCAD.Vector(0, height, 0),                             # pt_innerTopLeft
         FreeCAD.Vector(width, height, 0),                         # pt_innerTopRight
         FreeCAD.Vector(width - sideOffset, 0, 0),                 # pt_innerBottomRight
@@ -59,7 +52,7 @@ def create_cpap_holder(
     ] + (
         [
         FreeCAD.Vector(width + margin, height + margin + topExtension, 0),  # pt_extendedTopRightPeak
-        FreeCAD.Vector(width, height + margin + topExtension, 0),  # pt_extendedTopLeftPeak
+        FreeCAD.Vector(width, height + margin + topExtension, 0), # pt_extendedTopLeftPeak
         ] if includeMaskHolder else []
     ) + [
         FreeCAD.Vector(width, height + margin, 0),                # pt_transitionTopRight
@@ -68,7 +61,6 @@ def create_cpap_holder(
         FreeCAD.Vector(sideOffset, 0, 0)                          # Closing the loop back to pt_innerBottomLeft
     ]
 
-    # Create edges and wire for the base profile
     baseEdges = [Part.LineSegment(basePoints[i], basePoints[i + 1]).toShape() for i in range(len(basePoints) - 1)]
     baseWire = Part.Wire(baseEdges)
 
@@ -121,16 +113,16 @@ def create_cpap_holder(
     refinedFilletFeature.Source = filletFeature
     document.recompute()
 
+    # export step file
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    export_path = os.path.join(script_dir, f"{document_name}.step")
-    Part.export([refinedFilletFeature.Shape], export_path)
+    export_path = os.path.join(script_dir, "out", f"{document_name}.step")
+    refinedFilletFeature.Shape.exportStep(export_path)
     print(f"STEP file exported to {export_path}")
-    #save_screenshot(f"{document_name}")
+    # export screenshot
+    save_screenshot(f"{document_name}")
 
     return document
 
-
-# Main execution
 if __name__ == "__main__":
     create_cpap_holder(
         document_name="cpap_holder",
