@@ -130,7 +130,7 @@ if __name__ == "__main__":
         margin=3.0,
         height=40.0,
         width=41.5,
-        arc=234,
+        arc=207,
         innerDiameter=22.0,
         clampedWidth=38.0,
         extrusionDepth=30.0

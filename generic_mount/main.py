@@ -30,11 +30,11 @@ def center(small, large):
     result.translate(translation_vector)
     return result
 
-def getTopEdges(shape, chamfer_distance=1):
+def getTopEdges(shape):
     top_face = max(shape.Faces, key=lambda f: f.CenterOfMass.z)
     return list(top_face.Edges)
 
-def getOuterEdges(shape, chamfer_distance=1):
+def getOuterEdges(shape):
     tol = 1e-6
     # Find the vertical edges (those that go straight up the Z-axis)
     vertical_edges = []
@@ -71,7 +71,7 @@ def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fi
     case_x = object_x + 2*thickness
     case_y = object_y + 1*thickness # object can be inserted flush
     case_z = object_z + 2*thickness
-    lip_x = object_x - 2*lip
+    lip_x = object_x - 2*lip - 100
     lip_y = object_y - 2*lip - thickness
     lip_z = object_z - 2*lip
 
@@ -83,7 +83,7 @@ def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fi
      # translate for flush cut
     object.translate(App.Vector(0, object.BoundBox.YMax - case.BoundBox.YMax, object.BoundBox.ZMin - case.BoundBox.ZMin - thickness))
     lipb = center(lipb, case)
-    screwm = screw.render(screwType=screw.ScrewType.M6, screwLength=12, tolerance=0.25)
+    screwm = screw.render(screwType=screw.ScrewType.M6, screwLength=20, tolerance=0.25)
     screwm = center(screwm, case)
     # top of screw to top of bottom of case
     screwm.translate(App.Vector(0, 0, case.BoundBox.ZMin + thickness - screwm.BoundBox.ZMax))
@@ -126,9 +126,9 @@ def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fi
     doc.recompute()
     # check if case needs a bigger bottom to fit the screw and have enough space left such that the bottom does not
     # get too thin at the thinnest point
-    screwDims = screw.getScrewDimensions(screwType=screw.ScrewType.M6, length=12, head_tolerance=2)
-    if screwDims.k > thickness:
-        big_buttocks = Part.makeBox(case_x, case_y, screwDims.k - thickness)
+    screwDims = screw.getScrewDimensions(screwType=screw.ScrewType.M6, length=20, head_tolerance=2)
+    if 20 > thickness:
+        big_buttocks = Part.makeBox(case_x, case_y, 20 - thickness)
         offset = case.BoundBox.ZMin - big_buttocks.BoundBox.ZMax
         big_buttocks.translate(App.Vector(0, 0, offset))
         case = case.fuse(big_buttocks)
@@ -152,4 +152,7 @@ def render(tolerance=1, x = 100, y = 89.5, z = 49, thickness = 4.22, lip = 2, fi
     Gui.SendMsgToActiveView("ViewFit")
 
 if __name__ == "__main__":
-    render(tolerance=1, x=212.9, y=99.4, z=33.5, thickness=4, lip=2, fillet=2)
+    # flex 2.5 8 port poe
+    #render(tolerance=1, x=212.9, y=99.4, z=33.5, thickness=5, lip=3, fillet=2)
+    # apple tv
+    render(tolerance=1, x=239, y=36, z=18, thickness=4, lip=2, fillet=2)
